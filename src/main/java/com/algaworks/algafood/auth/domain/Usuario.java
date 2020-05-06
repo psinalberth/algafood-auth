@@ -3,10 +3,8 @@ package com.algaworks.algafood.auth.domain;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
+import java.util.Set;
 
 @Entity
 @Data
@@ -20,4 +18,10 @@ public class Usuario {
     private String nome;
     private String email;
     private String senha;
+
+    @ManyToMany
+    @JoinTable(name = "usuario_grupo",
+            joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "grupo_id"))
+    private Set<Grupo> grupos;
 }
