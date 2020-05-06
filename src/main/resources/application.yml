@@ -1,2 +1,13 @@
+algafood:
+  jwt:
+    keystore:
+      path: keystores/algafood.jks
+      password:
+      keypair-alias: algafood
 server:
   port: 8081
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/algafood?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: root
+    password: password
