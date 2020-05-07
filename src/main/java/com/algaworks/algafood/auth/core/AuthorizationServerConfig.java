@@ -11,7 +11,12 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.A
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
+import org.springframework.security.oauth2.provider.CompositeTokenGranter;
+import org.springframework.security.oauth2.provider.TokenGranter;
+import org.springframework.security.oauth2.provider.approval.ApprovalStore;
+import org.springframework.security.oauth2.provider.approval.TokenApprovalStore;
 import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
+import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
@@ -41,26 +46,26 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
                     .withClient("algafood-web")
                     .secret(passwordEncoder.encode("123"))
                     .authorizedGrantTypes("password", "refresh_token")
-                    .scopes("write", "read")
-                    .accessTokenValiditySeconds(60 * 60 * 6)
-
+                    .scopes("WRITE", "READ")
+                    .accessTokenValiditySeconds(6 * 60 * 60)
                 .and()
                     .withClient("analytics")
-                    .secret(passwordEncoder.encode("123"))
+                    .secret(passwordEncoder.encode(""))
                     .authorizedGrantTypes("authorization_code")
-                    .scopes("write", "read")
-                    .redirectUris("http://aplicacao-cliente")
+                    .scopes("WRITE", "READ")
+                    .redirectUris("http://www.aplicacao-cliente.com:8082")
                 .and()
                     .withClient("webadmin")
                     .authorizedGrantTypes("implicit")
-                    .scopes("write", "read")
+                    .scopes("WRITE", "READ")
                     .redirectUris("http://aplicacao-cliente");
     }
 
     @Override
     public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
         security.checkTokenAccess("isAuthenticated()")
-                .tokenKeyAccess("permitAll()");
+                .tokenKeyAccess("permitAll()")
+                .allowFormAuthenticationForClients();
     }
 
     @Override
@@ -75,8 +80,10 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
         endpoints.authenticationManager(authenticationManager)
                  .userDetailsService(userDetailsService)
                  .reuseRefreshTokens(false)
-                .tokenEnhancer(tokenEnhancerChain)
-                 .accessTokenConverter(jwtAccessTokenConverter());
+                 .accessTokenConverter(jwtAccessTokenConverter())
+                 .tokenEnhancer(tokenEnhancerChain)
+                 .approvalStore(approvalStore(endpoints.getTokenStore()))
+                 .tokenGranter(tokenGranter(endpoints));
     }
 
     @Bean
@@ -89,5 +96,23 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
         accessTokenConverter.setKeyPair(keyPair);
 
         return accessTokenConverter;
+    }
+
+    private TokenGranter tokenGranter(AuthorizationServerEndpointsConfigurer endpoints) {
+        var pkceAuthorizationCodeTokenGranter = new PkceAuthorizationCodeTokenGranter(endpoints.getTokenServices(),
+                endpoints.getAuthorizationCodeServices(), endpoints.getClientDetailsService(),
+                endpoints.getOAuth2RequestFactory());
+
+        var granters = Arrays.asList(
+                pkceAuthorizationCodeTokenGranter, endpoints.getTokenGranter());
+
+        return new CompositeTokenGranter(granters);
+    }
+
+    private ApprovalStore approvalStore(TokenStore tokenStore) {
+        var approvalStore = new TokenApprovalStore();
+        approvalStore.setTokenStore(tokenStore);
+
+        return approvalStore;
     }
 }
