@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
@@ -20,45 +19,31 @@ import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
+import javax.sql.DataSource;
 import java.util.Arrays;
 
 @Configuration
 @EnableAuthorizationServer
 public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
 
-    final PasswordEncoder passwordEncoder;
     final AuthenticationManager authenticationManager;
     final UserDetailsService userDetailsService;
     final JwtKeyStoreProperties keyStoreProperties;
+    final DataSource dataSource;
 
-    public AuthorizationServerConfig(PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
-                                     UserDetailsService userDetailsService, JwtKeyStoreProperties keyStoreProperties) {
-        this.passwordEncoder = passwordEncoder;
+    public AuthorizationServerConfig(AuthenticationManager authenticationManager,
+                                     UserDetailsService userDetailsService, JwtKeyStoreProperties keyStoreProperties,
+                                     DataSource dataSource) {
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
         this.keyStoreProperties = keyStoreProperties;
+        this.dataSource = dataSource;
     }
 
     @Override
     public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
         clients
-                .inMemory()
-                    .withClient("algafood-web")
-                    .secret(passwordEncoder.encode("123"))
-                    .authorizedGrantTypes("password", "refresh_token")
-                    .scopes("WRITE", "READ")
-                    .accessTokenValiditySeconds(6 * 60 * 60)
-                .and()
-                    .withClient("analytics")
-                    .secret(passwordEncoder.encode(""))
-                    .authorizedGrantTypes("authorization_code")
-                    .scopes("WRITE", "READ")
-                    .redirectUris("http://www.aplicacao-cliente.com:8082")
-                .and()
-                    .withClient("webadmin")
-                    .authorizedGrantTypes("implicit")
-                    .scopes("WRITE", "READ")
-                    .redirectUris("http://aplicacao-cliente");
+                .jdbc(dataSource);
     }
 
     @Override
